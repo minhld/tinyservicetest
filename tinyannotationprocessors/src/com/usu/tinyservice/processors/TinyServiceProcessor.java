@@ -141,9 +141,8 @@ public class TinyServiceProcessor extends AbstractProcessor {
     }
 
     private String generateFormater(TypeElement originatingType) {
-
-
-        List<VariableElement> fields = new ImmutableList.Builder<VariableElement>().addAll(ElementFilter.fieldsIn(originatingType.getEnclosedElements())).build();
+        List<VariableElement> fields = new ImmutableList.Builder<VariableElement>().addAll(
+        				ElementFilter.fieldsIn(originatingType.getEnclosedElements())).build();
         String sformat = "String.format(\"";
 
         for (VariableElement e : fields) {
