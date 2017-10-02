@@ -14,6 +14,8 @@ import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
+import javax.annotation.processing.SupportedAnnotationTypes;
+import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -35,11 +37,10 @@ import com.usu.tinyservice.annotations.TinyService;
 /**
  * Created by lee on 10/1/17.
  */
+// @SupportedAnnotationTypes("com.usu.tinyservice.annotations.TinyService")
+// @SupportedSourceVersion(SourceVersion.RELEASE_8)
 @AutoService(Processor.class)
 public class TinyServiceProcessor extends AbstractProcessor {
-    private static final String KEY_PARAM_NAME = "args";
-    private static final String METHOD_LOG = "log";
-    private static final String CLASS_SUFFIX = "_Log";
     private Messager messager = null;
     private Filer filer = null;
 
@@ -86,18 +87,24 @@ public class TinyServiceProcessor extends AbstractProcessor {
     }
 
     private boolean isValidClass(TypeElement type){
+    	// apply for classes
         if(type.getKind() != ElementKind.CLASS){
-            messager.printMessage(Diagnostic.Kind.ERROR, type.getSimpleName() + " only classes can be annotated with StatusInfo");
+            messager.printMessage(Diagnostic.Kind.ERROR, type.getSimpleName() + 
+            			" only classes can be annotated with " + TinyService.class.getName());
             return false;
         }
 
+        // only public methods
         if(type.getModifiers().contains(Modifier.PRIVATE)){
-            messager.printMessage(Diagnostic.Kind.ERROR, type.getSimpleName() + " only public classes can be annotated with StatusInfo");
+            messager.printMessage(Diagnostic.Kind.ERROR, type.getSimpleName() + 
+            			" only public classes can be annotated with " + TinyService.class.getName());
             return false;
         }
 
+        // only concrete classes
         if(type.getModifiers().contains(Modifier.ABSTRACT)){
-            messager.printMessage(Diagnostic.Kind.ERROR, type.getSimpleName() + " only non abstract classes can be annotated with StatusInfo");
+            messager.printMessage(Diagnostic.Kind.ERROR, type.getSimpleName() + 
+            			" only non abstract classes can be annotated with " + TinyService.class.getName());
             return false;
         }
 
@@ -113,25 +120,22 @@ public class TinyServiceProcessor extends AbstractProcessor {
         TypeVariableName typeVariableName = TypeVariableName.get(originatingType.getSimpleName().toString());
 
         //create static void method named log
-        MethodSpec log = MethodSpec.methodBuilder(METHOD_LOG)
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .returns(void.class)
-                //Parameter variable based on the annotated class
-                .addParameter(typeVariableName, KEY_PARAM_NAME)
-                //add a Lod.d("ClassName", String.format(class fields));
-                .addStatement("$T.d($S, $L)", logClassName, originatingType.getSimpleName().toString(), generateFormater(originatingType))
-                .build();
+		MethodSpec log = MethodSpec.methodBuilder(Constants.METHOD_LOG).
+						addModifiers(Modifier.PUBLIC, Modifier.STATIC).returns(void.class).
+						// Parameter variable based on the annotated class
+						addParameter(typeVariableName, Constants.KEY_PARAM_NAME).
+						// add a Lod.d("ClassName", String.format(class fields));
+						addStatement("$T.d($S, $L)", logClassName, originatingType.getSimpleName().toString(),
+						generateFormater(originatingType)).build();
 
         //create a class to wrap our method
         //the class name will be the annotated class name + _Log
-        TypeSpec loggerClass = TypeSpec.classBuilder(originatingType.getSimpleName().toString() + CLASS_SUFFIX)
-                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                //add the log statetemnt from above
-                .addMethod(log)
-                .build();
+        TypeSpec loggerClass = TypeSpec.classBuilder(originatingType.getSimpleName().toString() + Constants.CLASS_SUFFIX).
+                		addModifiers(Modifier.PUBLIC, Modifier.FINAL).
+            			//add the log statement from above
+                		addMethod(log).build();
         //create the file
-        JavaFile javaFile = JavaFile.builder(originatingType.getEnclosingElement().toString(), loggerClass)
-                .build();
+        JavaFile javaFile = JavaFile.builder(originatingType.getEnclosingElement().toString(), loggerClass).build();
 
         try {
             javaFile.writeTo(filer);
@@ -151,7 +155,7 @@ public class TinyServiceProcessor extends AbstractProcessor {
         sformat += "\"";
 
         for (VariableElement f : fields) {
-            sformat += ", " + KEY_PARAM_NAME + "." + f.getSimpleName();
+            sformat += ", " + Constants.KEY_PARAM_NAME + "." + f.getSimpleName();
         }
 
         sformat += ")";
